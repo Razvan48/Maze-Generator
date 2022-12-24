@@ -7,3 +7,9 @@
   <img width="505" height="425" src="https://github.com/Razvan48/Maze-Generator/blob/main/Demo/Maze Generator Demo.gif">
 </p>
 
+**Controls:** <br/>
+
+&emsp; Esc for closing the application <br/>
+
+
+
