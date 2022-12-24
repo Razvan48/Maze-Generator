@@ -1,2 +1,4 @@
 C:\Users\razvan\Desktop\Maze Generator\Debug\Maze Generator.exe
 C:\Users\razvan\Desktop\Maze Generator\Debug\Maze Generator.pdb
+C:\Users\razvan\Documents\GitHub\Maze-Generator\Debug\Maze Generator.exe
+C:\Users\razvan\Documents\GitHub\Maze-Generator\Debug\Maze Generator.pdb

@@ -1,2 +1,8 @@
 ﻿  main.cpp
-  Maze Generator.vcxproj -> C:\Users\razvan\Desktop\Maze Generator\Debug\Maze Generator.exe
+C:\Users\razvan\Documents\GitHub\Maze-Generator\main.cpp(19,25): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+C:\Users\razvan\Documents\GitHub\Maze-Generator\main.cpp(20,25): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+C:\Users\razvan\Documents\GitHub\Maze-Generator\main.cpp(191,15): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
+C:\Users\razvan\Documents\GitHub\Maze-Generator\main.cpp(199,57): warning C4244: 'argument': conversion from 'const double' to 'int', possible loss of data
+C:\Users\razvan\Documents\GitHub\Maze-Generator\main.cpp(199,43): warning C4244: 'argument': conversion from 'const double' to 'int', possible loss of data
+LINK : warning LNK4098: defaultlib 'MSVCRT' conflicts with use of other libs; use /NODEFAULTLIB:library
+  Maze Generator.vcxproj -> C:\Users\razvan\Documents\GitHub\Maze-Generator\Debug\Maze Generator.exe
