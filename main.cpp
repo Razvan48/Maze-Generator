@@ -17,8 +17,8 @@ using namespace std;
 const double WINDOW_WIDTH = 1024.0;
 const double WINDOW_HEIGHT = 768.0;
 
-const int DIM_X_BOARD = 30.0;
-const int DIM_Y_BOARD = 30.0;
+const int DIM_X_BOARD = 10.0;
+const int DIM_Y_BOARD = 10.0;
 
 const double DIM_X_RECT = WINDOW_WIDTH / (1.0 * DIM_Y_BOARD);
 const double DIM_Y_RECT = WINDOW_HEIGHT / (1.0 * DIM_X_BOARD);
