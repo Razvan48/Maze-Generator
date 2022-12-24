@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <queue>
 
 #include <glew.h>
 #include <glfw3.h>
@@ -14,23 +15,41 @@
 using namespace std;
 
 const double WINDOW_WIDTH = 1024.0;
-const double WINDOW_HEIGHT = 1024.0;
+const double WINDOW_HEIGHT = 768.0;
 
-const int DIM_X_BOARD = 256.0;
-const int DIM_Y_BOARD = 256.0;
+const int DIM_X_BOARD = 64.0;
+const int DIM_Y_BOARD = 64.0;
 
-const double DIM_X_RECT = WINDOW_WIDTH / (1.0 * DIM_X_BOARD);
-const double DIM_Y_RECT = WINDOW_HEIGHT / (1.0 * DIM_Y_BOARD);
+const double DIM_X_RECT = WINDOW_WIDTH / (1.0 * DIM_Y_BOARD);
+const double DIM_Y_RECT = WINDOW_HEIGHT / (1.0 * DIM_X_BOARD);
 
-bool matrix[DIM_Y_BOARD][DIM_X_BOARD];
-bool newMatrix[DIM_Y_BOARD][DIM_X_BOARD];
+const double PERCENT = 0.1;
 
-const double WAITING_TIME = 0.0125; // in seconds
+const double DELTA_X_RECT = DIM_X_RECT * PERCENT;
+const double DELTA_Y_RECT = DIM_Y_RECT * PERCENT;
 
-double currentTimeConway = 0.0;
-double lastTimeConway = 0.0;
+int maze[1 + DIM_X_BOARD + 1][1 + DIM_Y_BOARD + 1];
 
-const int HASH = 7;
+const double WAITING_TIME = 0.0; // in seconds
+
+double currentTimeMaze = 0.0;
+double lastTimeMaze = 0.0;
+
+int startX = 1;
+int startY = 1;
+
+int endX = DIM_X_BOARD;
+int endY = DIM_Y_BOARD;
+
+int crtX = startX;
+int crtY = startY;
+
+vector<pair<int, int>> stack;
+
+int indexQueue = 0;
+vector<pair<int, int>> q[2];
+
+int dist[1 + DIM_X_BOARD][1 + DIM_Y_BOARD];
 
 const char* vertexShaderSource =
 "#version 330 core \n"
@@ -114,20 +133,152 @@ void drawRectangle(double x1, double y1, double x2, double y2)
 
 int colourPath;
 
+bool drawCurrentPos = true;
+
 void draw()
 {
+    int x;
+    int y;
+
     vertices.clear();
 
-    for (int i = 0; i < DIM_X_BOARD; i++)
+    for (int i = 1; i <= DIM_X_BOARD; i++)
     {
-        for (int j = 0; j < DIM_Y_BOARD; j++)
+        for (int j = 1; j <= DIM_Y_BOARD; j++)
         {
-            if (matrix[i][j])
+            if (dist[i][j] > 0)
             {
-                int x = j;
-                int y = (DIM_X_BOARD - 1) - i;
+                x = j - 1;
+                y = DIM_X_BOARD - i;
 
                 drawRectangle((2.0 * x * DIM_X_RECT - WINDOW_WIDTH) / 2.0, (2.0 * y * DIM_Y_RECT - WINDOW_HEIGHT) / 2.0, (2.0 * (x + 1) * DIM_X_RECT - WINDOW_WIDTH) / 2.0, (2.0 * (y + 1) * DIM_Y_RECT - WINDOW_HEIGHT) / 2.0);
+            }
+        }
+    }
+
+    if (vertices.size() > 0)
+    {
+        glBufferData(GL_ARRAY_BUFFER, sizeof(double) * vertices.size(), &(vertices.front()), GL_DYNAMIC_DRAW);
+
+        glUniform3f(colourPath, 1.0, 1.0, 0.0);
+
+        glDrawArrays(GL_TRIANGLES, 0, vertices.size() / 2);
+    }
+
+    //////////////////////////////////////////////////////
+
+    vertices.clear();
+
+    x = startY - 1;
+    y = DIM_X_BOARD - startX;
+
+    drawRectangle((2.0 * x * DIM_X_RECT - WINDOW_WIDTH) / 2.0, (2.0 * y * DIM_Y_RECT - WINDOW_HEIGHT) / 2.0, (2.0 * (x + 1) * DIM_X_RECT - WINDOW_WIDTH) / 2.0, (2.0 * (y + 1) * DIM_Y_RECT - WINDOW_HEIGHT) / 2.0);
+
+    if (vertices.size() > 0)
+    {
+        glBufferData(GL_ARRAY_BUFFER, sizeof(double) * vertices.size(), &(vertices.front()), GL_DYNAMIC_DRAW);
+
+        glUniform3f(colourPath, 1.0, 0.0, 0.0);
+
+        glDrawArrays(GL_TRIANGLES, 0, vertices.size() / 2);
+    }
+    
+    ////////////////////////////////////////////////////
+
+    vertices.clear();
+
+    x = endY - 1;
+    y = DIM_X_BOARD - endX;
+
+    drawRectangle((2.0 * x * DIM_X_RECT - WINDOW_WIDTH) / 2.0, (2.0 * y * DIM_Y_RECT - WINDOW_HEIGHT) / 2.0, (2.0 * (x + 1) * DIM_X_RECT - WINDOW_WIDTH) / 2.0, (2.0 * (y + 1) * DIM_Y_RECT - WINDOW_HEIGHT) / 2.0);
+
+    if (vertices.size() > 0)
+    {
+        glBufferData(GL_ARRAY_BUFFER, sizeof(double) * vertices.size(), &(vertices.front()), GL_DYNAMIC_DRAW);
+
+        glUniform3f(colourPath, 0.0, 1.0, 0.0);
+
+        glDrawArrays(GL_TRIANGLES, 0, vertices.size() / 2);
+    }
+
+    ////////////////////////////////////////////////////
+
+    if (drawCurrentPos)
+    {
+        vertices.clear();
+
+        x = crtY - 1;
+        y = DIM_X_BOARD - crtX;
+
+        drawRectangle((2.0 * x * DIM_X_RECT - WINDOW_WIDTH) / 2.0, (2.0 * y * DIM_Y_RECT - WINDOW_HEIGHT) / 2.0, (2.0 * (x + 1) * DIM_X_RECT - WINDOW_WIDTH) / 2.0, (2.0 * (y + 1) * DIM_Y_RECT - WINDOW_HEIGHT) / 2.0);
+
+        if (vertices.size() > 0)
+        {
+            glBufferData(GL_ARRAY_BUFFER, sizeof(double) * vertices.size(), &(vertices.front()), GL_DYNAMIC_DRAW);
+
+            glUniform3f(colourPath, 0.0, 0.0, 1.0);
+
+            glDrawArrays(GL_TRIANGLES, 0, vertices.size() / 2);
+        }
+    }
+
+    ////////////////////////////////////////////////////
+
+    vertices.clear();
+
+    for (int i = 1; i <= DIM_X_BOARD; i++)
+    {
+        for (int j = 1; j <= DIM_Y_BOARD; j++)
+        {
+            if (maze[i][j] > 0)
+            {
+                x = j - 1;
+                y = DIM_X_BOARD - i;
+
+                if (maze[i][j] != 1)
+                {
+                    if (maze[i - 1][j] != -1 && maze[i - 1][j] != 2)
+                    {
+                        drawRectangle((2.0 * x * DIM_X_RECT - WINDOW_WIDTH) / 2.0, (2.0 * (y + 1) * DIM_Y_RECT - WINDOW_HEIGHT - 2.0 * DELTA_Y_RECT) / 2.0, (2.0 * (x + 1) * DIM_X_RECT - WINDOW_WIDTH) / 2.0, (2.0 * (y + 1) * DIM_Y_RECT - WINDOW_HEIGHT) / 2.0);
+                    }
+                    else if (maze[i - 1][j] != -1)
+                    {
+
+                    }
+                }
+                if (maze[i][j] != 2)
+                {
+                    if (maze[i + 1][j] != -1 && maze[i + 1][j] != 1)
+                    {
+                        drawRectangle((2.0 * x * DIM_X_RECT - WINDOW_WIDTH) / 2.0, (2.0 * y * DIM_Y_RECT - WINDOW_HEIGHT) / 2.0, (2.0 * (x + 1) * DIM_X_RECT - WINDOW_WIDTH) / 2.0, (2.0 * y * DIM_Y_RECT - WINDOW_HEIGHT + DELTA_Y_RECT) / 2.0);
+                    }
+                    else if (maze[i + 1][j] != -1)
+                    {
+
+                    }
+                }
+                if (maze[i][j] != 3)
+                {
+                    if (maze[i][j + 1] != -1 && maze[i][j + 1] != 4)
+                    {
+                        drawRectangle((2.0 * (x + 1) * DIM_X_RECT - WINDOW_WIDTH - 2.0 * DELTA_X_RECT) / 2.0, (2.0 * y * DIM_Y_RECT - WINDOW_HEIGHT) / 2.0, (2.0 * (x + 1) * DIM_X_RECT - WINDOW_WIDTH) / 2.0, (2.0 * (y + 1) * DIM_Y_RECT - WINDOW_HEIGHT) / 2.0);
+                    }
+                    else if (maze[i][j + 1] != -1)
+                    {
+
+                    }
+                }
+                if (maze[i][j] != 4)
+                {
+                    if (maze[i][j - 1] != -1 && maze[i][j - 1] != 3)
+                    {
+                        drawRectangle((2.0 * x * DIM_X_RECT - WINDOW_WIDTH) / 2.0, (2.0 * y * DIM_Y_RECT - WINDOW_HEIGHT) / 2.0, (2.0 * x * DIM_X_RECT - WINDOW_WIDTH + 2.0 * DELTA_X_RECT) / 2.0, (2.0 * (y + 1) * DIM_Y_RECT - WINDOW_HEIGHT) / 2.0);
+                    }
+                    else if (maze[i][j - 1] != -1)
+                    {
+
+                    }
+                }
             }
         }
     }
@@ -142,48 +293,89 @@ void draw()
     }
 }
 
-void initMatrix()
+void initMaze()
 {
-    for (int i = 0; i < DIM_X_BOARD; i++)
-        for (int j = 0; j < DIM_Y_BOARD; j++)
-            matrix[i][j] = (rand() % HASH == 0);
-}
+    maze[crtX][crtY] = -1;
 
-void Conway()
-{
-    int dx[] = { 0, 0, -1, 1, 1, -1,  1, -1 };
-    int dy[] = { -1, 1,  0, 0, 1, -1, -1,  1 };
+    generatingMaze = true;
 
-    for (int i = 0; i < DIM_X_BOARD; i++)
-        for (int j = 0; j < DIM_Y_BOARD; j++)
-            newMatrix[i][j] = false;
+    stack.emplace_back(crtX, crtY);
 
-    for (int i = 1; i < DIM_X_BOARD - 1; i++)
+    q[indexQueue].emplace_back(startX, startY);
+
+    for (int i = 0; i <= DIM_X_BOARD + 1; i++)
     {
-        for (int j = 1; j < DIM_Y_BOARD - 1; j++)
-        {
-            int num = 0;
-
-            for (int k = 0; k < 8; k++)
-                if (matrix[i + dx[k]][j + dy[k]])
-                    num++;
-
-            if (matrix[i][j])
-            {
-                if (num == 2 || num == 3)
-                    newMatrix[i][j] = true;
-            }
-            else
-            {
-                if (num == 3)
-                    newMatrix[i][j] = true;
-            }
-        }
+        maze[i][0]               = -1;
+        maze[i][1 + DIM_Y_BOARD] = -1;
     }
 
-    for (int i = 0; i < DIM_X_BOARD; i++)
-        for (int j = 0; j < DIM_Y_BOARD; j++)
-            matrix[i][j] = newMatrix[i][j];
+    for (int j = 0; j <= DIM_Y_BOARD + 1; j++)
+    {
+        maze[0][j]               = -1;
+        maze[1 + DIM_X_BOARD][j] = -1;
+    }
+}
+
+bool generatingMaze;
+
+void generateMaze()
+{
+    if (!stack.empty())
+    {
+        int x = stack.back().first;
+        int y = stack.back().second;
+
+        crtX = x;
+        crtY = y;
+
+        int dx[] = { -1,    1,  -1,  0,  0 };
+        int dy[] = { -1,    0,   0, -1,  1 };
+
+        vector<int> possibleDirections;
+        
+        for (int k = 1; k <= 4; k++)
+        {
+            int newX = x + dx[k];
+            int newY = y + dy[k];
+
+            if (maze[newX][newY] == 0)
+                possibleDirections.emplace_back(k);
+        }
+
+        if (!possibleDirections.empty())
+        {
+            int direction = possibleDirections[rand() % (int)possibleDirections.size()];
+
+            maze[x + dx[direction]][y + dy[direction]] = direction;
+
+            stack.emplace_back(x + dx[direction], y + dy[direction]);
+        }
+        else
+        {
+            stack.pop_back();
+        }
+    }
+    else
+    {
+        generatingMaze = false;
+
+        drawCurrentPos = false;
+    }
+}
+
+void findSolution()
+{
+    while (!q[indexQueue].empty())
+    {
+        int x = q[indexQueue].front().first;
+        int y = q[indexQueue].front().second;
+
+        q[indexQueue].pop_back();
+
+
+    }
+
+    indexQueue = 1 - indexQueue;
 }
 
 int main()
@@ -196,7 +388,7 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "John Conway's Game of Life", 0, 0);
+    GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Maze Generator", 0, 0);
     //glfwGetPrimaryMonitor();
 
     glfwMakeContextCurrent(window);
@@ -236,7 +428,7 @@ int main()
     glm::mat4 ortho = glm::ortho(-0.5 * WINDOW_WIDTH, 0.5 * WINDOW_WIDTH, -0.5 * WINDOW_HEIGHT, 0.5 * WINDOW_HEIGHT);
     glUniformMatrix4fv(orthoPath, 1, GL_FALSE, glm::value_ptr(ortho));
 
-    initMatrix();
+    initMaze();
 
     while (!glfwWindowShouldClose(window))
     {
@@ -247,11 +439,23 @@ int main()
 
         handleInput(window);
 
-        currentTimeConway = glfwGetTime();
-        if (currentTimeConway - lastTimeConway > WAITING_TIME)
+        if (generatingMaze)
         {
-            lastTimeConway = currentTimeConway;
-            Conway();
+            currentTimeMaze = glfwGetTime();
+            if (currentTimeMaze - lastTimeMaze > WAITING_TIME)
+            {
+                lastTimeMaze = currentTimeMaze;
+                generateMaze();
+            }
+        }
+        else
+        {
+            currentTimeMaze = glfwGetTime();
+            if (currentTimeMaze - lastTimeMaze > WAITING_TIME)
+            {
+                lastTimeMaze = currentTimeMaze;
+                findSolution();
+            }
         }
 
         draw();
