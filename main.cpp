@@ -17,8 +17,8 @@ using namespace std;
 const double WINDOW_WIDTH = 1024.0;
 const double WINDOW_HEIGHT = 768.0;
 
-const int DIM_X_BOARD = 64.0;
-const int DIM_Y_BOARD = 64.0;
+const int DIM_X_BOARD = 30.0;
+const int DIM_Y_BOARD = 30.0;
 
 const double DIM_X_RECT = WINDOW_WIDTH / (1.0 * DIM_Y_BOARD);
 const double DIM_Y_RECT = WINDOW_HEIGHT / (1.0 * DIM_X_BOARD);
@@ -46,10 +46,14 @@ int crtY = startY;
 
 vector<pair<int, int>> stack;
 
-int indexQueue = 0;
-vector<pair<int, int>> q[2];
+int indexQueue;
+queue<pair<int, int>> q[2];
 
-int dist[1 + DIM_X_BOARD][1 + DIM_Y_BOARD];
+int dist[1 + DIM_X_BOARD + 1][1 + DIM_Y_BOARD + 1];
+
+bool partOfChain[1 + DIM_X_BOARD][1 + DIM_Y_BOARD];
+
+vector<pair<int, int>> solution;
 
 const char* vertexShaderSource =
 "#version 330 core \n"
@@ -169,6 +173,33 @@ void draw()
 
     vertices.clear();
 
+    for (int i = 1; i <= DIM_X_BOARD; i++)
+    {
+        for (int j = 1; j <= DIM_Y_BOARD; j++)
+        {
+            if (partOfChain[i][j])
+            {
+                x = j - 1;
+                y = DIM_X_BOARD - i;
+
+                drawRectangle((2.0 * x * DIM_X_RECT - WINDOW_WIDTH) / 2.0, (2.0 * y * DIM_Y_RECT - WINDOW_HEIGHT) / 2.0, (2.0 * (x + 1) * DIM_X_RECT - WINDOW_WIDTH) / 2.0, (2.0 * (y + 1) * DIM_Y_RECT - WINDOW_HEIGHT) / 2.0);
+            }
+        }
+    }
+
+    if (vertices.size() > 0)
+    {
+        glBufferData(GL_ARRAY_BUFFER, sizeof(double) * vertices.size(), &(vertices.front()), GL_DYNAMIC_DRAW);
+
+        glUniform3f(colourPath, 0.0, 1.0, 1.0);
+
+        glDrawArrays(GL_TRIANGLES, 0, vertices.size() / 2);
+    }
+
+    //////////////////////////////////////////////////////
+
+    vertices.clear();
+
     x = startY - 1;
     y = DIM_X_BOARD - startX;
 
@@ -230,14 +261,14 @@ void draw()
     {
         for (int j = 1; j <= DIM_Y_BOARD; j++)
         {
-            if (maze[i][j] > 0)
+            if (maze[i][j] > 0 || (i == startX && j == startY))
             {
                 x = j - 1;
                 y = DIM_X_BOARD - i;
 
                 if (maze[i][j] != 1)
                 {
-                    if (maze[i - 1][j] != -1 && maze[i - 1][j] != 2)
+                    if (maze[i - 1][j] != 2)
                     {
                         drawRectangle((2.0 * x * DIM_X_RECT - WINDOW_WIDTH) / 2.0, (2.0 * (y + 1) * DIM_Y_RECT - WINDOW_HEIGHT - 2.0 * DELTA_Y_RECT) / 2.0, (2.0 * (x + 1) * DIM_X_RECT - WINDOW_WIDTH) / 2.0, (2.0 * (y + 1) * DIM_Y_RECT - WINDOW_HEIGHT) / 2.0);
                     }
@@ -248,7 +279,7 @@ void draw()
                 }
                 if (maze[i][j] != 2)
                 {
-                    if (maze[i + 1][j] != -1 && maze[i + 1][j] != 1)
+                    if (maze[i + 1][j] != 1)
                     {
                         drawRectangle((2.0 * x * DIM_X_RECT - WINDOW_WIDTH) / 2.0, (2.0 * y * DIM_Y_RECT - WINDOW_HEIGHT) / 2.0, (2.0 * (x + 1) * DIM_X_RECT - WINDOW_WIDTH) / 2.0, (2.0 * y * DIM_Y_RECT - WINDOW_HEIGHT + DELTA_Y_RECT) / 2.0);
                     }
@@ -259,7 +290,7 @@ void draw()
                 }
                 if (maze[i][j] != 3)
                 {
-                    if (maze[i][j + 1] != -1 && maze[i][j + 1] != 4)
+                    if (maze[i][j + 1] != 4)
                     {
                         drawRectangle((2.0 * (x + 1) * DIM_X_RECT - WINDOW_WIDTH - 2.0 * DELTA_X_RECT) / 2.0, (2.0 * y * DIM_Y_RECT - WINDOW_HEIGHT) / 2.0, (2.0 * (x + 1) * DIM_X_RECT - WINDOW_WIDTH) / 2.0, (2.0 * (y + 1) * DIM_Y_RECT - WINDOW_HEIGHT) / 2.0);
                     }
@@ -270,7 +301,7 @@ void draw()
                 }
                 if (maze[i][j] != 4)
                 {
-                    if (maze[i][j - 1] != -1 && maze[i][j - 1] != 3)
+                    if (maze[i][j - 1] != 3)
                     {
                         drawRectangle((2.0 * x * DIM_X_RECT - WINDOW_WIDTH) / 2.0, (2.0 * y * DIM_Y_RECT - WINDOW_HEIGHT) / 2.0, (2.0 * x * DIM_X_RECT - WINDOW_WIDTH + 2.0 * DELTA_X_RECT) / 2.0, (2.0 * (y + 1) * DIM_Y_RECT - WINDOW_HEIGHT) / 2.0);
                     }
@@ -293,6 +324,10 @@ void draw()
     }
 }
 
+bool generatingMaze;
+bool findingSolution;
+bool findingChain;
+
 void initMaze()
 {
     maze[crtX][crtY] = -1;
@@ -301,7 +336,9 @@ void initMaze()
 
     stack.emplace_back(crtX, crtY);
 
-    q[indexQueue].emplace_back(startX, startY);
+    q[indexQueue].emplace(crtX, crtY);
+
+    dist[crtX][crtY] = 1;
 
     for (int i = 0; i <= DIM_X_BOARD + 1; i++)
     {
@@ -316,7 +353,8 @@ void initMaze()
     }
 }
 
-bool generatingMaze;
+int dx[] = { -1,    1,  -1,  0,  0 };
+int dy[] = { -1,    0,   0, -1,  1 };
 
 void generateMaze()
 {
@@ -327,9 +365,6 @@ void generateMaze()
 
         crtX = x;
         crtY = y;
-
-        int dx[] = { -1,    1,  -1,  0,  0 };
-        int dy[] = { -1,    0,   0, -1,  1 };
 
         vector<int> possibleDirections;
         
@@ -360,6 +395,8 @@ void generateMaze()
         generatingMaze = false;
 
         drawCurrentPos = false;
+
+        findingSolution = true;
     }
 }
 
@@ -370,12 +407,117 @@ void findSolution()
         int x = q[indexQueue].front().first;
         int y = q[indexQueue].front().second;
 
-        q[indexQueue].pop_back();
+        q[indexQueue].pop();
 
+        int invMaze;
 
+        if (maze[x][y] == 1)
+            invMaze = 2;
+        else if (maze[x][y] == 2)
+            invMaze = 1;
+        else if (maze[x][y] == 3)
+            invMaze = 4;
+        else if (maze[x][y] == 4)
+            invMaze = 3;
+        else
+            invMaze = -1;
+
+        for (int k = 1; k <= 4; k++)
+        {
+            int newX = x + dx[k];
+            int newY = y + dy[k];
+
+            if (maze[newX][newY] != -1 && dist[newX][newY] == 0)
+            {
+                int invNew;
+
+                if (maze[newX][newY] == 1)
+                    invNew = 2;
+                else if (maze[newX][newY] == 2)
+                    invNew = 1;
+                else if (maze[newX][newY] == 3)
+                    invNew = 4;
+                else if (maze[newX][newY] == 4)
+                    invNew = 3;
+                else
+                    invNew = -1;
+
+                if ((invMaze != -1 && x + dx[invMaze] == newX && y + dy[invMaze] == newY) || (invNew != -1 && newX + dx[invNew] == x && newY + dy[invNew] == y))
+                {
+                    dist[newX][newY] = dist[x][y] + 1;
+                    q[1 - indexQueue].emplace(newX, newY);
+                }
+            }
+        }
     }
 
     indexQueue = 1 - indexQueue;
+
+    if (q[indexQueue].empty())
+    {
+        findingSolution = false;
+
+        findingChain = true;
+    }
+}
+
+void findChain()
+{
+    solution.emplace_back(endX, endY);
+
+    crtX = endX;
+    crtY = endY;
+
+    while (crtX != startX || crtY != startY)
+    {
+        int invMaze;
+
+        if (maze[crtX][crtY] == 1)
+            invMaze = 2;
+        else if (maze[crtX][crtY] == 2)
+            invMaze = 1;
+        else if (maze[crtX][crtY] == 3)
+            invMaze = 4;
+        else if (maze[crtX][crtY] == 4)
+            invMaze = 3;
+        else
+            invMaze = -1;
+
+        for (int k = 1; k <= 4; k++)
+        {
+            int newX = crtX + dx[k];
+            int newY = crtY + dy[k];
+
+            if (maze[newX][newY] != -1 || (newX == startX && newY == startY))
+            {
+                int invNew;
+
+                if (maze[newX][newY] == 1)
+                    invNew = 2;
+                else if (maze[newX][newY] == 2)
+                    invNew = 1;
+                else if (maze[newX][newY] == 3)
+                    invNew = 4;
+                else if (maze[newX][newY] == 4)
+                    invNew = 3;
+                else
+                    invNew = -1;
+
+                if ((invMaze != -1 && crtX + dx[invMaze] == newX && crtY + dy[invMaze] == newY) || (invNew != -1 && newX + dx[invNew] == crtX && newY + dy[invNew] == crtY))
+                {
+                    if (dist[crtX][crtY] == dist[newX][newY] + 1)
+                    {
+                        crtX = newX;
+                        crtY = newY;
+
+                        solution.emplace_back(crtX, crtY);
+                    }
+                }
+            }
+        }
+    }
+
+    findingChain = false;
 }
 
 int main()
@@ -448,13 +590,29 @@ int main()
                 generateMaze();
             }
         }
-        else
+        else if (findingSolution)
         {
             currentTimeMaze = glfwGetTime();
             if (currentTimeMaze - lastTimeMaze > WAITING_TIME)
             {
                 lastTimeMaze = currentTimeMaze;
                 findSolution();
+            }
+        }
+        else if (findingChain)
+        {
+            findChain();
+        }
+        else
+        {
+            if (!solution.empty())
+            {
+                int x = solution.back().first;
+                int y = solution.back().second;
+
+                solution.pop_back();
+
+                partOfChain[x][y] = true;
             }
         }
 
