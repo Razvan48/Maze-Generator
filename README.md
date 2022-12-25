@@ -1,4 +1,4 @@
-# Maze-Generator | _C++, OpenGL, Depth-First Search, Breadth-First Search_
+# Maze-Generator | _C++, OpenGL, DFS, BFS_
 
 &emsp; This program generates a random maze of any given sizes. <br/>
 &emsp; It uses DFS algorithm for building paths in the maze. <br/>
