@@ -1,8 +1,8 @@
 # Maze-Generator | _C++, OpenGL, DFS, BFS_
 
 &emsp; This program generates a random maze of any given sizes. <br/>
-&emsp; It uses DFS algorithm for building paths in the maze. <br/>
-&emsp; After generating the maze, the program finds the shortest path from the start cell to the end cell using BFS algorithm. <br/>
+&emsp; It uses Depth-First Search algorithm for building paths in the maze. <br/>
+&emsp; After generating the maze, the program finds the shortest path from the start cell to the end cell using Breadth-First Search algorithm. <br/>
 
 <p align = "center">
   First phase in the program: generating the maze using DFS algorithm <br/>
