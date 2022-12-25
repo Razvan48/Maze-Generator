@@ -17,8 +17,8 @@ using namespace std;
 const double WINDOW_WIDTH = 1024.0;
 const double WINDOW_HEIGHT = 768.0;
 
-const int DIM_X_BOARD = 10.0;
-const int DIM_Y_BOARD = 10.0;
+const int DIM_X_BOARD = 64.0;
+const int DIM_Y_BOARD = 64.0;
 
 const double DIM_X_RECT = WINDOW_WIDTH / (1.0 * DIM_Y_BOARD);
 const double DIM_Y_RECT = WINDOW_HEIGHT / (1.0 * DIM_X_BOARD);
@@ -213,7 +213,7 @@ void draw()
 
         glDrawArrays(GL_TRIANGLES, 0, vertices.size() / 2);
     }
-    
+
     ////////////////////////////////////////////////////
 
     vertices.clear();
@@ -342,13 +342,13 @@ void initMaze()
 
     for (int i = 0; i <= DIM_X_BOARD + 1; i++)
     {
-        maze[i][0]               = -1;
+        maze[i][0] = -1;
         maze[i][1 + DIM_Y_BOARD] = -1;
     }
 
     for (int j = 0; j <= DIM_Y_BOARD + 1; j++)
     {
-        maze[0][j]               = -1;
+        maze[0][j] = -1;
         maze[1 + DIM_X_BOARD][j] = -1;
     }
 }
@@ -367,7 +367,7 @@ void generateMaze()
         crtY = y;
 
         vector<int> possibleDirections;
-        
+
         for (int k = 1; k <= 4; k++)
         {
             int newX = x + dx[k];

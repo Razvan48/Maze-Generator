@@ -1,1 +1,2 @@
 C:\Users\razvan\Desktop\Maze Generator\Release\Maze Generator.exe
+C:\Users\razvan\Documents\GitHub\Maze-Generator\Release\Maze Generator.exe
